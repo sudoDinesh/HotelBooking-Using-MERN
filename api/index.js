@@ -12,6 +12,7 @@ const multer = require("multer");
 const fs = require("fs");
 
 const { default: mongoose, models } = require("mongoose");
+const BookingModel = require("./models/Booking.js");
 require("dotenv").config();
 const bcryptSalt = bcrypt.genSaltSync(10);
 const jwtSecret = "hsviat77igsbwqk378wiwgABWH";
@@ -235,4 +236,145 @@ app.get("/bookings", async (req, res) => {
   res.json(await Booking.find({ user: userData.id }).populate("place"));
 });
 
+app.get("/hotelNames", async (req, res) => {
+  const data = await BookingModel.aggregate([
+    {
+      $lookup: {
+        from: "places",
+        localField: "place",
+        foreignField: "_id",
+        as: "placeInfo",
+      },
+    },
+    {
+      $unwind: "$placeInfo",
+    },
+    {
+      $lookup: {
+        from: "users",
+        localField: "user",
+        foreignField: "_id",
+        as: "customerInfo",
+      },
+    },
+    {
+      $unwind: "$customerInfo",
+    },
+    {
+      $match: {
+        checkIn: {
+          $gte: new Date(new Date().setFullYear(new Date().getFullYear() - 3)),
+        },
+      },
+    },
+    {
+      $group: {
+        _id: "$placeInfo._id",
+        placeInfo: { $first: "$placeInfo" },
+        totalRevenue: { $sum: "$price" },
+      },
+    },
+    {
+      $match: {
+        totalRevenue: { $gt: 100000 },
+      },
+    },
+  ]);
+  res.json(data);
+});
+
+app.get("/custNames", async (req, res) => {
+  const data = await BookingModel.aggregate([
+    {
+      $lookup: {
+        from: "places",
+        localField: "place",
+        foreignField: "_id",
+        as: "placeInfo",
+      },
+    },
+    {
+      $unwind: "$placeInfo",
+    },
+    {
+      $group: {
+        _id: { place: "$place", user: "$user" },
+        totalPrice: { $sum: "$price" },
+        bookings: { $push: "$$ROOT" },
+      },
+    },
+    {
+      $match: {
+        totalPrice: { $gt: 100000 },
+      },
+    },
+    {
+      $lookup: {
+        from: "users",
+        localField: "_id.user",
+        foreignField: "_id",
+        as: "userInfo",
+      },
+    },
+    {
+      $unwind: "$userInfo",
+    },
+    {
+      $project: {
+        _id: 0, // Remove _id field
+        place: "$_id.place",
+        user: "$_id.user",
+        totalPrice: 1,
+        bookings: 1,
+        userInfo: 1,
+      },
+    },
+  ]);
+  res.json(data);
+});
+
+app.get("/highlyValuedCust", async (req, res) => {
+  const data = await BookingModel.aggregate([
+    {
+      $match: {
+        checkIn: {
+          $gte: new Date("2022-01-01"),
+          $lt: new Date("2024-01-01"),
+        },
+      },
+    },
+    {
+      $group: {
+        _id: "$user",
+        totalBookingValue: { $sum: "$price" },
+      },
+    },
+    {
+      $sort: { totalBookingValue: -1 },
+    },
+    {
+      $limit: 1,
+    },
+    {
+      $lookup: {
+        from: "users",
+        localField: "_id",
+        foreignField: "_id",
+        as: "userInfo",
+      },
+    },
+    {
+      $unwind: "$userInfo",
+    },
+    {
+      $project: {
+        _id: 0,
+        UserName: "$userInfo.name",
+        UserEmail: "$userInfo.email",
+        TotalBookingValue: "$totalBookingValue",
+      },
+    },
+  ]);
+  res.json(data);
+});
 app.listen(4000);
