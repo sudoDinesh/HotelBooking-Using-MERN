@@ -237,53 +237,69 @@ app.get("/bookings", async (req, res) => {
 });
 
 app.get("/hotelNames", async (req, res) => {
-  const data = await BookingModel.aggregate([
-    {
-      $lookup: {
-        from: "places",
-        localField: "place",
-        foreignField: "_id",
-        as: "placeInfo",
-      },
-    },
-    {
-      $unwind: "$placeInfo",
-    },
-    {
-      $lookup: {
-        from: "users",
-        localField: "user",
-        foreignField: "_id",
-        as: "customerInfo",
-      },
-    },
-    {
-      $unwind: "$customerInfo",
-    },
-    {
-      $match: {
-        checkIn: {
-          $gte: new Date(new Date().setFullYear(new Date().getFullYear() - 3)),
+  const { name } = req.query; // Use req.query to get the 'name' parameter from the query string
+
+  try {
+    const data = await BookingModel.aggregate([
+      {
+        $lookup: {
+          from: "places",
+          localField: "place",
+          foreignField: "_id",
+          as: "placeInfo",
         },
       },
-    },
-    {
-      $group: {
-        _id: "$placeInfo._id",
-        placeInfo: { $first: "$placeInfo" },
-        totalRevenue: { $sum: "$price" },
+      {
+        $unwind: "$placeInfo",
       },
-    },
-    {
-      $match: {
-        totalRevenue: { $gt: 100000 },
+      {
+        $lookup: {
+          from: "users",
+          localField: "user",
+          foreignField: "_id",
+          as: "customerInfo",
+        },
       },
-    },
-  ]);
-  res.json(data);
+      {
+        $unwind: "$customerInfo",
+      },
+      {
+        $match: {
+          checkIn: {
+            $gte: new Date(
+              new Date().setFullYear(new Date().getFullYear() - 3)
+            ),
+          },
+        },
+      },
+      {
+        $group: {
+          _id: "$placeInfo._id",
+          placeInfo: { $first: "$placeInfo" },
+          totalRevenue: { $sum: "$price" },
+        },
+      },
+      {
+        $match: {
+          totalRevenue: { $gt: 100000 },
+        },
+      },
+      {
+        $match: {
+          "placeInfo.address": name, // Use single quotes for the field name
+        },
+      },
+    ]);
+
+    res.json(data);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "An error occurred" });
+  }
 });
 
 app.get("/custNames", async (req, res) => {
+  const { name } = req.query; // Use req.query to get the 'name' parameter from the query string
   const data = await BookingModel.aggregate([
     {
       $lookup: {
@@ -320,6 +336,11 @@ app.get("/custNames", async (req, res) => {
       $unwind: "$userInfo",
     },
     {
+      $match: {
+        "bookings.placeInfo.address": name, // Use single quotes for the field name
+      },
+    },
+    {
       $project: {
         _id: 0, // Remove _id field
         place: "$_id.place",
@@ -334,12 +355,13 @@ app.get("/custNames", async (req, res) => {
 });
 
 app.get("/highlyValuedCust", async (req, res) => {
+  const { from, to } = req.query; // Use req.query to get the 'name' parameter from the query string
   const data = await BookingModel.aggregate([
     {
       $match: {
         checkIn: {
-          $gte: new Date("2022-01-01"),
-          $lt: new Date("2024-01-01"),
+          $gte: new Date(from),
+          $lt: new Date(to),
         },
       },
     },
@@ -377,4 +399,10 @@ app.get("/highlyValuedCust", async (req, res) => {
   ]);
   res.json(data);
 });
+
+app.get("/getAllPlaces", async (req, res) => {
+  const data = await Place.aggregate([{ $project: { address: 1 } }]);
+  res.json(data);
+});
+
 app.listen(4000);
