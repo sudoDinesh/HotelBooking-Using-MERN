@@ -1,21 +1,26 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable react/jsx-key */
-/* eslint-disable react/jsx-no-undef */
-/* eslint-disable no-unused-vars */
-import axios from "axios";
 import { useEffect, useState } from "react";
+import axios from "axios";
 import AccountNav from "../AccountNav";
-import { Link } from "react-router-dom";
 import PlaceImg from "../PlaceImg";
 
 export default function QuerySPage() {
   const [customers, setCustomers] = useState([]);
   const [selectedOption, setSelectedOption] = useState("");
   const [places, setPlaces] = useState([]);
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
 
   useEffect(() => {
-    // Fetch the initial list of places and hotels when the component mounts
+    // Fetch the initial list of places and customers when the component mounts
     fetchPlaces();
   }, []);
+
+  useEffect(() => {
+    // Whenever selectedOption, from, or to change, fetch customers
+    fetchCustomers();
+  }, [selectedOption, from, to]);
 
   const fetchPlaces = () => {
     axios.get("/getAllPlaces").then(({ data }) => {
@@ -23,36 +28,62 @@ export default function QuerySPage() {
     });
   };
 
+  const fetchCustomers = () => {
+    // Make an API call to fetch customers based on the selected place, from, and to
+    if (selectedOption && from && to) {
+      axios
+        .get(
+          "/custNames?name=" + selectedOption + "&from=" + from + "&to=" + to
+        )
+        .then(({ data }) => {
+          setCustomers(data);
+        });
+    } else {
+      // If no place is selected or from/to is missing, clear the customers
+      setCustomers([]);
+    }
+  };
+
   const handleDropdownChange = (event) => {
     const selectedValue = event.target.value;
     setSelectedOption(selectedValue);
-
-    // Make an API call to fetch hotels based on the selected place
-    if (selectedValue) {
-      axios.get("/custNames?name=" + selectedValue).then(({ data }) => {
-        setCustomers(data);
-      });
-    } else {
-      // If no place is selected, clear the hotels
-      setCustomers([]);
-    }
   };
 
   return (
     <div>
       <AccountNav />
       <div className="text-center text-xl">
-        Customers who booked certain place more than 1 lakhs
+        Customers who booked certain place more than 1 lakh
       </div>
-      <div>
-        <select value={selectedOption} onChange={handleDropdownChange}>
-          <option value="">Places </option>
-          {places.map((place) => (
-            <option key={place.address} value={place.address}>
-              {place.address}
-            </option>
-          ))}
-        </select>
+      <div className="flex py-6">
+        <div className="py-6">
+          <select value={selectedOption} onChange={handleDropdownChange}>
+            <option value="">Places</option>
+            {places.map((place) => (
+              <option key={place.address} value={place.address}>
+                {place.address}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="flex py-3 px-0">
+          <div className="py-3 px-4">
+            <label>From:</label>
+            <input
+              type="date"
+              value={from}
+              onChange={(ev) => setFrom(ev.target.value)}
+            />
+          </div>
+          <div className="py-3 px-4 border-l">
+            <label>To:</label>
+            <input
+              type="date"
+              value={to}
+              onChange={(ev) => setTo(ev.target.value)}
+            />
+          </div>
+        </div>
       </div>
       <div className="mt-4">
         {customers.length > 0 &&
@@ -72,7 +103,7 @@ export default function QuerySPage() {
               </div>
             </div>
           ))}
-        {customers.length == 0 && (
+        {customers.length === 0 && (
           <div className="text-center text-xl py-8">No result</div>
         )}
       </div>

@@ -15,6 +15,7 @@ import BookingPage from "./pages/BookingPage";
 import QueryfPage from "./pages/QueryfPage";
 import QuerySPage from "./pages/QuerySPage";
 import QueryTPage from "./pages/QueryTPage";
+import AnalyticsPage from "./pages/AnalyticsPage";
 
 axios.defaults.baseURL = "http://localhost:4000";
 axios.defaults.withCredentials = true;
@@ -37,6 +38,7 @@ function App() {
           <Route path="/account/query1" element={<QueryfPage />} />
           <Route path="/account/query2" element={<QuerySPage />} />
           <Route path="/account/query3" element={<QueryTPage />} />
+          <Route path="/account/Analytic" element={<AnalyticsPage />} />
         </Route>
       </Routes>
     </UserContextProvider>

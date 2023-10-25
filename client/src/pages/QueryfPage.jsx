@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable react/jsx-key */
 import axios from "axios";
 import { useEffect, useState } from "react";
@@ -9,31 +10,35 @@ export default function QueryfPage() {
   const [hotels, setHotels] = useState([]);
   const [selectedOption, setSelectedOption] = useState("");
   const [places, setPlaces] = useState([]);
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
+
+  // Create a function to fetch hotels based on selected place, from, and to
+  const fetchHotels = () => {
+    if (selectedOption && from && to) {
+      axios
+        .get(`/hotelNames?name=${selectedOption}&from=${from}&to=${to}`)
+        .then(({ data }) => {
+          setHotels(data);
+        });
+    }
+  };
+
+  // Use useEffect to watch for changes in selectedOption, from, and to
+  useEffect(() => {
+    fetchHotels(); // Initial fetch
+  }, [selectedOption, from, to]);
 
   useEffect(() => {
-    // Fetch the initial list of places and hotels when the component mounts
-    fetchPlaces();
-  }, []);
-
-  const fetchPlaces = () => {
+    // Fetch the initial list of places when the component mounts
     axios.get("/getAllPlaces").then(({ data }) => {
       setPlaces(data);
     });
-  };
+  }, []);
 
   const handleDropdownChange = (event) => {
     const selectedValue = event.target.value;
     setSelectedOption(selectedValue);
-
-    // Make an API call to fetch hotels based on the selected place
-    if (selectedValue) {
-      axios.get("/hotelNames?name=" + selectedValue).then(({ data }) => {
-        setHotels(data);
-      });
-    } else {
-      // If no place is selected, clear the hotels
-      setHotels([]);
-    }
   };
 
   return (
@@ -42,15 +47,35 @@ export default function QueryfPage() {
       <div className="text-center text-xl">
         Places with revenue more than 1 lakh
       </div>
-      <div>
-        <select value={selectedOption} onChange={handleDropdownChange}>
-          <option value="">Places </option>
-          {places.map((place) => (
-            <option key={place.address} value={place.address}>
-              {place.address}
-            </option>
-          ))}
-        </select>
+      <div className="flex py-6">
+        <div className="py-6">
+          <select value={selectedOption} onChange={handleDropdownChange}>
+            <option value="">Places </option>
+            {places.map((place) => (
+              <option key={place.address} value={place.address}>
+                {place.address}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="flex py-3 px-0">
+          <div className="py-3 px-4">
+            <label>From:</label>
+            <input
+              type="date"
+              value={from}
+              onChange={(ev) => setFrom(ev.target.value)}
+            />
+          </div>
+          <div className="py-3 px-4 border-l">
+            <label>To:</label>
+            <input
+              type="date"
+              value={to}
+              onChange={(ev) => setTo(ev.target.value)}
+            />
+          </div>
+        </div>
       </div>
       <div className="mt-4">
         {hotels.length > 0 &&

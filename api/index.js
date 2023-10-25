@@ -65,7 +65,12 @@ app.post("/login", async (req, res) => {
     passOk = bcrypt.compareSync(password, userDoc.password);
     if (passOk) {
       jwt.sign(
-        { email: userDoc.email, id: userDoc._id, name: userDoc.name },
+        {
+          email: userDoc.email,
+          id: userDoc._id,
+          name: userDoc.name,
+          role: userDoc.role,
+        },
         jwtSecret,
         {},
         (err, token) => {
@@ -86,8 +91,8 @@ app.get("/profile", (req, res) => {
   if (token) {
     jwt.verify(token, jwtSecret, {}, async (err, userData) => {
       if (err) throw err;
-      const { name, email, _id } = await User.findById(userData.id);
-      res.json({ name, email, _id });
+      const { name, email, _id, role } = await User.findById(userData.id);
+      res.json({ name, email, _id, role });
     });
   } else {
     res.json(null);
@@ -237,8 +242,7 @@ app.get("/bookings", async (req, res) => {
 });
 
 app.get("/hotelNames", async (req, res) => {
-  const { name } = req.query; // Use req.query to get the 'name' parameter from the query string
-
+  const { name, from, to } = req.query; // Use req.query to get the 'name' parameter from the query string
   try {
     const data = await BookingModel.aggregate([
       {
@@ -266,9 +270,10 @@ app.get("/hotelNames", async (req, res) => {
       {
         $match: {
           checkIn: {
-            $gte: new Date(
-              new Date().setFullYear(new Date().getFullYear() - 3)
-            ),
+            $gte: new Date(from),
+          },
+          checkOut: {
+            $lte: new Date(to),
           },
         },
       },
@@ -299,8 +304,18 @@ app.get("/hotelNames", async (req, res) => {
 });
 
 app.get("/custNames", async (req, res) => {
-  const { name } = req.query; // Use req.query to get the 'name' parameter from the query string
+  const { name, from, to } = req.query; // Use req.query to get the 'name' parameter from the query string
   const data = await BookingModel.aggregate([
+    {
+      $match: {
+        checkIn: {
+          $gte: new Date(from),
+        },
+        checkOut: {
+          $lte: new Date(to),
+        },
+      },
+    },
     {
       $lookup: {
         from: "places",
@@ -340,6 +355,7 @@ app.get("/custNames", async (req, res) => {
         "bookings.placeInfo.address": name, // Use single quotes for the field name
       },
     },
+
     {
       $project: {
         _id: 0, // Remove _id field
